@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?><project name="Car Cooling System" company="IST - Grupo 3" webLink="http://" view-date="2022-12-07" view-index="0" gantt-divider-location="351" resource-divider-location="300" version="3.2.3247" locale="pt_PT">
+<?xml version="1.0" encoding="UTF-8"?><project name="Car Cooling System" company="IST - Grupo 3" webLink="http://" view-date="2022-11-28" view-index="0" gantt-divider-location="351" resource-divider-location="300" version="3.2.3247" locale="pt_PT">
     <description>
         <![CDATA[Bem então isto para fazer o carro mais frio]]>
     </description>
-    <view zooming-state="default:3" id="gantt-chart">
+    <view zooming-state="default:5" id="gantt-chart">
         <field id="tpd3" name="Nome" width="200" order="0"/>
         <field id="tpd4" name="Data de início" width="75" order="1"/>
         <field id="tpd5" name="Data de fim" width="75" order="2"/>
@@ -13,7 +13,7 @@
     </view>
     <view id="resource-table">
         <field id="0" name="Nome" width="210" order="0"/>
-        <field id="1" name="Função padrão" width="86" order="1"/>
+        <field id="1" name="Função padrão" width="87" order="1"/>
     </view>
     <!-- -->
     <calendars base-id="Nenhum">

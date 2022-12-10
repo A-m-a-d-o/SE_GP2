@@ -28,16 +28,8 @@
 #include "driverlib/debug.h"
 #include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
+#include "driverlib/systick.h"
 
-//*****************************************************************************
-//
-//! \addtogroup example_list
-//! <h1>Blinky (blinky)</h1>
-//!
-//! A very simple example that blinks the on-board LED using direct register
-//! access.
-//
-//*****************************************************************************
 
 //*****************************************************************************
 //
@@ -52,64 +44,127 @@ __error__(char *pcFilename, uint32_t ui32Line)
 }
 #endif
 
-uint8_t pin[6] = {GPIO_PIN_0,GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
+uint8_t pin[6] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
 
+int keyboard[4][4] = {
+    {'1', '2', '3', 'F'},
+    {'4', '5', '6', 'E'},
+    {'7', '8', '9', 'D'},
+    {'A', '0', 'B', 'C'}
+};
 
+volatile uint8_t key_flag = 0;
+uint32_t time = 0;
 
-
-
-int key_pressed(void)
+char key_pressed(uint8_t col, uint8_t row)
 {
+
+    row /= 2;
+    if( row == 4)
+        row = 3;
+
+    return keyboard[row][col];
+}
+
+char detect_key(void)
+{
+    uint8_t cols;
+    char key = 0;
+
+    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, 0);
+
+    for(cols = 0; cols < 4; cols++)    //Verifies every column for a key press
+    {
+        uint8_t reading = 0;
+
+        GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], pin[cols]);    //Writes 1 in the pin selected
+        SysCtlDelay(2 * (SysCtlClockGet() / 3 / 1000000));      //Waits 2 us
+
+        reading = GPIOPinRead(GPIO_PORTE_BASE,
+        GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);       //Reads PORTE
+
+        if (reading != 0)                                      // if a key is detected
+        {
+            key = key_pressed(cols, reading);
+            return key;
+        }
+
+
+       GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], 0);
+
+    }
     return 0;
 }
-//*****************************************************************************
-//
-// Blink the on-board LED.
-//
-//*****************************************************************************
+
+void PortEIntHandler(void)
+{
+
+   GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+   key_flag = 1;
+}
+
+void int_tick_ms_handler(void)
+{
+    time++;
+}
 int main(void)
 {
-    volatile uint8_t rows, cols;
-
-    //
-    // Enable the GPIO port that is used for the on-board LED.
-    //
+ // Initialize GPIO's
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-    //
-    // Check if the peripheral access is enabled.
-    //
+
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOE));
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOD));
 
-
+  //Associate interrupt to function
+    GPIOIntRegister(GPIO_PORTE_BASE, PortEIntHandler);
 
     GPIOPinTypeGPIOInput(GPIO_PORTE_BASE,
-    GPIO_PIN_0);
+    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+
+    GPIOIntTypeSet(GPIO_PORTE_BASE,
+    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_HIGH_LEVEL);
 
     GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE,
-    GPIO_PIN_0);
+    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+  // Enable GPIO interrupt
+    GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
 
-    //
+  //Write 1 all keypad input's
+    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+
+    //Config systick for ms
+    SysTickIntRegister(int_tick_ms_handler);
+    SysTickPeriodSet(SysCtlClockGet()/1000);
+
+    SysTickIntEnable();
+
     // Loop forever.
     //
     while(1)
     {
-        for(cols = 0; cols < 4; cols++)
-        {
-            GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], pin[cols]);
-            SysCtlDelay(2 * (SysCtlClockGet() / 3 / 1000000));
-            for(rows = 0; rows < 4; rows++)  //Scan rows
-                  {
-                    if(GPIOPinRead(GPIO_PORTE_BASE, pin[rows]) == 1)
-                    {
-                      key_pressed();
-                    }
-                  }
-            GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], 0);
-        }
 
 
+      if (key_flag == 1)
+      {
+          char key;
+          key_flag = 0;
+          key = detect_key();
+          // does lcd processing
+          SysTickEnable();
+
+
+      }
+
+      if(time >= 5)
+      {
+          SysTickDisable();
+          time = 0;
+          GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+          GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+      }
 
     }
+    return 0;
+
 }
