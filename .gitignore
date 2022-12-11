@@ -163,3 +163,8 @@
 .jxbrowser.userdata/Crowd Deny/2022.10.19.1145/Preload Data
 .jxbrowser.userdata/CertificateRevocation/7746/LICENSE
 .jxbrowser.userdata/CertificateRevocation/7746/crl-set
+.DS_Store
+Car Cooling/.ccsproject
+Car Cooling/.cproject
+Car Cooling/.project
+Car Cooling/targetConfigs/Tiva TM4C123GH6PM.ccxml
