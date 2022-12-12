@@ -29,6 +29,24 @@
 #include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
+#include "string.h"
+
+#define FALSE 0
+#define TRUE 1
+
+#define LCDPORT         GPIO_PORTC_BASE
+#define LCDPORTENABLE   SYSCTL_PERIPH_GPIOC
+
+#define LCDCONTROLEN  SYSCTL_PERIPH_GPIOB
+#define LCDCONTROL        GPIO_PORTB_BASE
+
+#define RS              GPIO_PIN_3
+#define E               GPIO_PIN_2
+
+#define D4              GPIO_PIN_4
+#define D5              GPIO_PIN_5
+#define D6              GPIO_PIN_6
+#define D7              GPIO_PIN_7
 
 
 //*****************************************************************************
@@ -46,123 +64,139 @@ __error__(char *pcFilename, uint32_t ui32Line)
 
 uint8_t pin[6] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
 
-int keyboard[4][4] = {
-    {'1', '2', '3', 'F'},
-    {'4', '5', '6', 'E'},
-    {'7', '8', '9', 'D'},
-    {'A', '0', 'B', 'C'}
-};
 
-volatile uint8_t key_flag = 0;
-uint32_t time = 0;
 
-char key_pressed(uint8_t col, uint8_t row)
-{
+void LCD_Command(unsigned char c) {
 
-    row /= 2;
-    if( row == 4)
-        row = 3;
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (c & 0xf0) );
+        GPIOPinWrite(LCDCONTROL, RS, 0x00);
+        GPIOPinWrite(LCDCONTROL, E, E);
 
-    return keyboard[row][col];
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (c & 0x0f) << 4 );
+        GPIOPinWrite(LCDCONTROL, RS, 0x00);
+        GPIOPinWrite(LCDCONTROL, E, E);
+
+        SysCtlDelay(10);
+
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
 }
 
-char detect_key(void)
-{
-    uint8_t cols;
-    char key = 0;
+void LCD_Clear(void){
 
-    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, 0);
+        LCD_Command(0x01);
+        SysCtlDelay(10);
 
-    for(cols = 0; cols < 4; cols++)    //Verifies every column for a key press
-    {
-        uint8_t reading = 0;
-
-        GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], pin[cols]);    //Writes 1 in the pin selected
-        SysCtlDelay(2 * (SysCtlClockGet() / 3 / 1000000));      //Waits 2 us
-
-        reading = GPIOPinRead(GPIO_PORTE_BASE,
-        GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);       //Reads PORTE
-
-        if (reading != 0)                                      // if a key is detected
-        {
-            key = key_pressed(cols, reading);
-            return key;
-        }
-
-
-       GPIOPinWrite(GPIO_PORTD_BASE, pin[cols], 0);
-
-    }
-    return 0;
 }
 
-void PortEIntHandler(void)
-{
+void LCD_init() {
 
-   GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-   key_flag = 1;
+        SysCtlPeripheralEnable(LCDPORTENABLE);
+        SysCtlPeripheralEnable(LCDCONTROLEN);
+        GPIOPinTypeGPIOOutput(LCDPORT, D4| D5 | D6 | D7);
+        GPIOPinTypeGPIOOutput(LCDCONTROL, RS | E);
+
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDCONTROL, RS,  0x00 );
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
+        GPIOPinWrite(LCDCONTROL, E, E);
+        SysCtlDelay(10);
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
+        GPIOPinWrite(LCDCONTROL, E, E);
+        SysCtlDelay(10);
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
+        GPIOPinWrite(LCDCONTROL, E, E);
+        SysCtlDelay(10);
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x20 );
+        GPIOPinWrite(LCDCONTROL, E, E);
+        SysCtlDelay(10);
+        GPIOPinWrite(LCDCONTROL, E, 0x00);
+
+        SysCtlDelay(50000);
+
+
+        LCD_Command(0x0F); //Turn on Lcd
+        LCD_Clear(); //Clear screen
+
 }
 
-void int_tick_ms_handler(void)
+void LCD_Pulse()
 {
-    time++;
+    GPIOPinWrite(LCDCONTROL , E, E);
+    SysCtlDelay(10);
+    GPIOPinWrite(LCDCONTROL, E, 0x00);
 }
+
+
+
+void LCD_Write_c(unsigned char d) {
+
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0xf0) );
+        GPIOPinWrite(LCDCONTROL , RS, RS);
+        LCD_Pulse();
+        SysCtlDelay(50000);
+        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0x0f) << 4 );
+        GPIOPinWrite(LCDCONTROL , RS, RS);
+        LCD_Pulse();
+        SysCtlDelay(50000);
+
+}
+
+void LCD_print(char * input)
+{
+   int size = strlen(input), i;
+
+   for(i = 0; i < size; i++)
+   {
+       LCD_Write_c(input[i]);
+   }
+
+}
+
+void LCD_Cursor(uint8_t col){
+
+
+        LCD_Command(0x80 + (col % 20));
+        return;
+
+}
+
+
 int main(void)
 {
- // Initialize GPIO's
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOE));
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOD));
-
-  //Associate interrupt to function
-    GPIOIntRegister(GPIO_PORTE_BASE, PortEIntHandler);
-
-    GPIOPinTypeGPIOInput(GPIO_PORTE_BASE,
-    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-
-    GPIOIntTypeSet(GPIO_PORTE_BASE,
-    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_HIGH_LEVEL);
-
-    GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE,
-    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-  // Enable GPIO interrupt
-    GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-
-  //Write 1 all keypad input's
-    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-
-    //Config systick for ms
-    SysTickIntRegister(int_tick_ms_handler);
-    SysTickPeriodSet(SysCtlClockGet()/1000);
-
-    SysTickIntEnable();
-
+    SysCtlClockSet(SYSCTL_SYSDIV_8|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
+    LCD_init();
+    LCD_print("O");
+    LCD_Cursor(19);
+    LCD_print("O");
     // Loop forever.
     //
     while(1)
     {
-
-
-      if (key_flag == 1)
-      {
-          char key;
-          key_flag = 0;
-          key = detect_key();
-          // does lcd processing
-          SysTickEnable();
-
-
-      }
-
-      if(time >= 5)
-      {
-          SysTickDisable();
-          time = 0;
-          GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-          GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
-      }
+        int a;
+        a = 0;
 
     }
     return 0;
