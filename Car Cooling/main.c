@@ -27,8 +27,10 @@
 #include "inc/hw_memmap.h"
 #include "driverlib/debug.h"
 #include "driverlib/gpio.h"
+#include "driverlib/i2c.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
+#include "driverlib/pin_map.h"
 #include "string.h"
 
 #define FALSE 0
@@ -65,138 +67,117 @@ __error__(char *pcFilename, uint32_t ui32Line)
 uint8_t pin[6] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
 
 
-
-void LCD_Command(unsigned char c) {
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (c & 0xf0) );
-        GPIOPinWrite(LCDCONTROL, RS, 0x00);
-        GPIOPinWrite(LCDCONTROL, E, E);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (c & 0x0f) << 4 );
-        GPIOPinWrite(LCDCONTROL, RS, 0x00);
-        GPIOPinWrite(LCDCONTROL, E, E);
-
-        SysCtlDelay(10);
-
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-}
-
-void LCD_Clear(void){
-
-        LCD_Command(0x01);
-        SysCtlDelay(10);
-
-}
-
-void LCD_init() {
-
-        SysCtlPeripheralEnable(LCDPORTENABLE);
-        SysCtlPeripheralEnable(LCDCONTROLEN);
-        GPIOPinTypeGPIOOutput(LCDPORT, D4| D5 | D6 | D7);
-        GPIOPinTypeGPIOOutput(LCDCONTROL, RS | E);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDCONTROL, RS,  0x00 );
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
-        GPIOPinWrite(LCDCONTROL, E, E);
-        SysCtlDelay(10);
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
-        GPIOPinWrite(LCDCONTROL, E, E);
-        SysCtlDelay(10);
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x30 );
-        GPIOPinWrite(LCDCONTROL, E, E);
-        SysCtlDelay(10);
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7,  0x20 );
-        GPIOPinWrite(LCDCONTROL, E, E);
-        SysCtlDelay(10);
-        GPIOPinWrite(LCDCONTROL, E, 0x00);
-
-        SysCtlDelay(50000);
-
-
-        LCD_Command(0x0F); //Turn on Lcd
-        LCD_Clear(); //Clear screen
-
-}
-
-void LCD_Pulse()
+void temp_sens_init(void)
 {
-    GPIOPinWrite(LCDCONTROL , E, E);
-    SysCtlDelay(10);
-    GPIOPinWrite(LCDCONTROL, E, 0x00);
+    GPIOPinConfigure(GPIO_PA7_I2C1SDA);
+    GPIOPinConfigure(GPIO_PA6_I2C1SCL);
+
+    GPIOPinTypeI2C(GPIO_PORTA_BASE,GPIO_PIN_6|GPIO_PIN_7);
+
+    GPIOPinTypeGPIOInput(GPIO_PORTB_BASE, GPIO_PIN_0);
+    //
+    // Enable the I2C1 peripheral
+    //
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_I2C1);
+
+    //Enable the GPIO peripheral for the alert
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+
+    //
+    // Wait for the I2C1 module to be ready.
+    //
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_I2C1))
+    {
+    }
+
+    // Wait for the I2C1 module to be ready.
+    //
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOB))
+    {
+    }
+    //
+    // Initialize Master and Slave
+    //
+    I2CMasterInitExpClk(I2C1_BASE, SysCtlClockGet(), false);
+    //
+    // Specify slave address
+    //
+    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, false);
+
+    I2CMasterDataPut(I2C1_BASE, 0x01);
+
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
+
+    while(I2CMasterBusBusy(I2C1_BASE))
+    {
+    }
+
+    I2CMasterDataPut(I2C1_BASE, 0x2E);
+
+    // Initiate send of character from Master to Slave
+    //
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
+    //
+    // Delay until transmission completes
+    //
+    while(I2CMasterBusBusy(I2C1_BASE))
+    {
+    }
+
+
 }
 
-
-
-void LCD_Write_c(unsigned char d) {
-
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0xf0) );
-        GPIOPinWrite(LCDCONTROL , RS, RS);
-        LCD_Pulse();
-        SysCtlDelay(50000);
-        GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0x0f) << 4 );
-        GPIOPinWrite(LCDCONTROL , RS, RS);
-        LCD_Pulse();
-        SysCtlDelay(50000);
-
-}
-
-void LCD_print(char * input)
+uint16_t temp_read(void)
 {
-   int size = strlen(input), i;
+    uint16_t temp;
+    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, false);
 
-   for(i = 0; i < size; i++)
-   {
-       LCD_Write_c(input[i]);
-   }
+    I2CMasterDataPut(I2C1_BASE, 0x00);
+
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
+
+    while(I2CMasterBusBusy(I2C1_BASE))
+    {
+    }
+
+    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, true);
+
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_RECEIVE);
+
+   temp = (uint8_t) I2CMasterDataGet(I2C1_BASE);
+
+   while(I2CMasterBusBusy(I2C1_BASE))
+       {
+       }
+
+   I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_RECEIVE);
+
+     temp = (uint8_t) I2CMasterDataGet(I2C1_BASE);
+
+     while(I2CMasterBusBusy(I2C1_BASE))
+         {
+         }
+
+
+
+
+
+
 
 }
 
-void LCD_Cursor(uint8_t col){
 
-
-        LCD_Command(0x80 + (col % 20));
-        return;
-
-}
 
 
 int main(void)
 {
+    temp_sens_init();
     SysCtlClockSet(SYSCTL_SYSDIV_8|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
-    LCD_init();
-    LCD_print("O");
-    LCD_Cursor(19);
-    LCD_print("O");
+
     // Loop forever.
     //
     while(1)
     {
-        int a;
-        a = 0;
 
     }
     return 0;

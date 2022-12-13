@@ -95,7 +95,7 @@ void int_tick_ms_handler(void)
     time++;
 }
 
-void keypad_processesing
+void keypad_processesing(void)
 {
     if (key_flag == 1)
         {
