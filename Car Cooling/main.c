@@ -25,13 +25,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "inc/hw_gpio.h"
 #include "driverlib/debug.h"
 #include "driverlib/gpio.h"
 #include "driverlib/i2c.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "driverlib/pin_map.h"
+#include "inc/hw_i2c.h"
 #include "string.h"
+#include "i2c.h"
+
+
 
 #define FALSE 0
 #define TRUE 1
@@ -67,119 +73,24 @@ __error__(char *pcFilename, uint32_t ui32Line)
 uint8_t pin[6] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
 
 
-void temp_sens_init(void)
-{
-    GPIOPinConfigure(GPIO_PA7_I2C1SDA);
-    GPIOPinConfigure(GPIO_PA6_I2C1SCL);
-
-    GPIOPinTypeI2C(GPIO_PORTA_BASE,GPIO_PIN_6|GPIO_PIN_7);
-
-    GPIOPinTypeGPIOInput(GPIO_PORTB_BASE, GPIO_PIN_0);
-    //
-    // Enable the I2C1 peripheral
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_I2C1);
-
-    //Enable the GPIO peripheral for the alert
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
-
-    //
-    // Wait for the I2C1 module to be ready.
-    //
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_I2C1))
-    {
-    }
-
-    // Wait for the I2C1 module to be ready.
-    //
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOB))
-    {
-    }
-    //
-    // Initialize Master and Slave
-    //
-    I2CMasterInitExpClk(I2C1_BASE, SysCtlClockGet(), false);
-    //
-    // Specify slave address
-    //
-    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, false);
-
-    I2CMasterDataPut(I2C1_BASE, 0x01);
-
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
-
-    while(I2CMasterBusBusy(I2C1_BASE))
-    {
-    }
-
-    I2CMasterDataPut(I2C1_BASE, 0x2E);
-
-    // Initiate send of character from Master to Slave
-    //
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
-    //
-    // Delay until transmission completes
-    //
-    while(I2CMasterBusBusy(I2C1_BASE))
-    {
-    }
-
-
-}
-
-uint16_t temp_read(void)
-{
-    uint16_t temp;
-    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, false);
-
-    I2CMasterDataPut(I2C1_BASE, 0x00);
-
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
-
-    while(I2CMasterBusBusy(I2C1_BASE))
-    {
-    }
-
-    I2CMasterSlaveAddrSet(I2C1_BASE, 0x90, true);
-
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_RECEIVE);
-
-   temp = (uint8_t) I2CMasterDataGet(I2C1_BASE);
-
-   while(I2CMasterBusBusy(I2C1_BASE))
-       {
-       }
-
-   I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_RECEIVE);
-
-     temp = (uint8_t) I2CMasterDataGet(I2C1_BASE);
-
-     while(I2CMasterBusBusy(I2C1_BASE))
-         {
-         }
-
-
-
-
-
-
-
-}
-
 
 
 
 int main(void)
 {
+    float temp;
+    int a;
+    SysCtlClockSet(SYSCTL_SYSDIV_1|SYSCTL_USE_OSC|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
     temp_sens_init();
-    SysCtlClockSet(SYSCTL_SYSDIV_8|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
 
-    // Loop forever.
-    //
+
     while(1)
     {
 
+        temp_get();
+
+        a++;
+        return 0;
     }
-    return 0;
 
 }
