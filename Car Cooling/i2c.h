@@ -24,7 +24,9 @@
 
 #define TMP_101_ADD 0x48
 
-void temp_sens_init(void);
+void i2c_init(void);
+
+void sensor_init(void);
 
 void temp_get(void);
 
