@@ -49,7 +49,7 @@ int main(void)
 
     CANEnable(CAN0_BASE);
 
-        msgData = 200;
+        msgData = 0;
         msg.ui32MsgID =0x01;
         msg.ui32MsgIDMask = 0;
         msg.ui32Flags =0;
