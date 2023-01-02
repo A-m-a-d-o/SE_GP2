@@ -33,28 +33,42 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
 #include "driverlib/pin_map.h"
-
 #include "i2c.h"
+
+
+#define SLAVE_ADDR              0x48
+#define REG_TEMP_ADDR           0x00
+#define REG_CONFIG_ADDR         0x01
+#define REG_TLOW                0x02
+#define REG_TMAX         0x03
+
+// I2C hardware functions
+/*
+PA6 -----> SCL
+PA7 -----> SDA
+*/
 
 
 
 
 int main(void)
 {
-    i2c_init();
-    sensor_init();
+  /*  I2CInit(SLAVE_ADDR);
+    config_i2c();
+    set_temp(24, REG_TMAX);
+    set_temp(22, REG_TLOW);
+    float temp=0.0;
+  */
+
+    keypad_init();
+
+        while(1){
+
+                //temp = temp_get();
 
 
-    while(1)
-    {
 
-        uint16_t temp;
-
-
-          temp_get();
-
-
-    }
+                }
 
     return 0;
 
