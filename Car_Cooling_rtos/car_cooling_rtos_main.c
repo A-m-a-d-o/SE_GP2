@@ -105,7 +105,7 @@ main(void)
     //
     // Create the LED task.
     //
-    if(LEDTaskInit() != 0)
+    if(TMP_TaskInit() != 0)
     {
 
         while(1)

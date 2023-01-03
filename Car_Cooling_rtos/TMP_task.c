@@ -15,28 +15,23 @@
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
+#include "i2c/i2c.h"
 
 //*****************************************************************************
 //
 // The stack size for the LED toggle task.
 //
 //*****************************************************************************
-#define LEDTASKSTACKSIZE        128         // Stack size in words
+#define TMPTASKSTACKSIZE        128         // Stack size in words
 
 //*****************************************************************************
 //
 // The item size and queue size for the LED message queue.
 //
 //*****************************************************************************
-#define LED_ITEM_SIZE           sizeof(uint8_t)
-#define LED_QUEUE_SIZE          5
+#define TMP_ITEM_SIZE           sizeof(uint8_t)
+#define TMP_QUEUE_SIZE          5
 
-//*****************************************************************************
-//
-// Default LED toggle delay value. LED toggling frequency is twice this number.
-//
-//*****************************************************************************
-#define LED_TOGGLE_DELAY        250
 
 //*****************************************************************************
 //
@@ -55,7 +50,7 @@ extern xSemaphoreHandle g_pUARTSemaphore;
 //
 //*****************************************************************************
 static void
-LEDTask(void *pvParameters)
+TMP_Task(void *pvParameters)
 {
 
         //vTaskDelayUntil(&ui32WakeTime, ui32LEDToggleDelay / portTICK_RATE_MS);
@@ -68,19 +63,19 @@ LEDTask(void *pvParameters)
 //
 //*****************************************************************************
 uint32_t
-LEDTaskInit(void)
+TMP_TaskInit(void)
 {
     //
     // Initialize the GPIOs and Timers that drive the three LEDs.
     //
 
-    g_pLEDQueue = xQueueCreate(LED_QUEUE_SIZE, LED_ITEM_SIZE);
+    g_pLEDQueue = xQueueCreate(TMP_QUEUE_SIZE, TMP_ITEM_SIZE);
 
     //
     // Create the LED task.
     //
-    if(xTaskCreate(LEDTask, (const portCHAR *)"LED", LEDTASKSTACKSIZE, NULL,
-                   tskIDLE_PRIORITY + PRIORITY_LED_TASK, NULL) != pdTRUE)
+    if(xTaskCreate(TMP_Task, (const portCHAR *)"TMP", TMPTASKSTACKSIZE, NULL,
+                   tskIDLE_PRIORITY + PRIORITY_TMP_TASK, NULL) != pdTRUE)
     {
         return(1);
     }
