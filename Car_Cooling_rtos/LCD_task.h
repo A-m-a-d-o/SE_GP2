@@ -28,10 +28,10 @@
 //
 //*****************************************************************************
 
-#ifndef TMP_TASK_H_
-#define TMP_TASK_H_
+#ifndef LCD_TASK_H_
+#define LCD_TASK_H_
 
-extern uint32_t TMP_TaskInit(void);
+extern uint32_t LCD_TaskInit(void);
 
 
 

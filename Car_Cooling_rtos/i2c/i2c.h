@@ -23,12 +23,17 @@
 #include "string.h"
 
 #define TMP_101_ADD 0x48
+#define SLAVE_ADDR              0x48
+#define REG_TEMP_ADDR           0x00
+#define REG_CONFIG_ADDR         0x01
+#define REG_TLOW                0x02
+#define REG_TMAX         0x03
 
-void I2CInit(uint8_t slave_adress);
-void config_i2c(void);
-void I2C_2byte_Write(uint16_t data, uint8_t reg);
-uint16_t I2C_2byte_Read(uint8_t reg_addr);
-float temp_get (void);
-uint8_t set_temp(float temp_max, uint8_t reg);
+void I2C_Init(void);
+void I2C_2byte_Write(uint16_t data, uint8_t reg, uint8_t slave_addr);
+uint16_t I2C_2byte_Read(uint8_t reg_addr, uint8_t slave_addr);
+
+
+
 
 #endif /* I2C_H_ */

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <TMP_task.h>
+#include <math.h>
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
 #include "driverlib/gpio.h"
@@ -16,6 +17,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "i2c/i2c.h"
+#include "TMP_task.h"
 
 //*****************************************************************************
 //
@@ -31,6 +33,7 @@
 //*****************************************************************************
 #define TMP_ITEM_SIZE           sizeof(uint8_t)
 #define TMP_QUEUE_SIZE          5
+#define TMP_Delay               100
 
 
 //*****************************************************************************
@@ -42,6 +45,80 @@ xQueueHandle g_pLEDQueue;
 
 
 extern xSemaphoreHandle g_pUARTSemaphore;
+extern xSemaphoreHandle i2c_semaphore;
+
+// Config I2C for TMP 101
+void config_i2c(void){
+
+    I2CMasterSlaveAddrSet(I2C1_BASE, SLAVE_ADDR, false);
+
+    I2CMasterDataPut(I2C1_BASE, 0x01);                             //TMP Config Reg
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_START);
+    while(I2CMasterBusy(I2C1_BASE));
+
+    I2CMasterDataPut(I2C1_BASE, 0x6E);                             //TMP 9 bits Res., 2 Faults, continuous mode
+    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_FINISH);
+    while(I2CMasterBusy(I2C1_BASE));
+
+    I2CMasterIntEnable(I2C1_BASE);
+
+    I2CMasterIntEnableEx(I2C1_BASE, I2C_MASTER_INT_STOP);
+
+}
+
+//Reads temperature from TMP 101 Sensor
+float temp_get (void){
+    uint16_t aux;
+
+    aux= I2C_2byte_Read(REG_TEMP_ADDR, SLAVE_ADDR);                // Gets 2 raw bytes from temperature register.
+
+    //Determine if reading is negative
+    if((aux && 0x8000) == 0x8000)
+    {
+        aux &= 0x7FFF;
+
+        aux = aux >> 6;
+
+            return -(aux * 0.25);
+
+    }
+    // Working with 10 bits
+    aux = aux >> 6;
+
+
+    return aux * 0.25; // Converts number to degrees celsius
+}
+// Sets alarm temperature threshold
+uint8_t set_temp(float temp_max, uint8_t reg)
+{
+    const float precision = 0.0625;
+    float math_aux;
+    uint16_t aux;
+
+// Determines if alarm number is negative
+    if (temp_max < 0 && temp_max > -128 )
+    {
+        temp_max = fabs(temp_max);              //if its negative writes value in 2's complement
+        math_aux = fmod(temp_max, precision);
+        temp_max -= math_aux;
+        aux = temp_max / precision;
+        aux = (~aux) +1;
+        aux = aux << 4;
+        I2C_2byte_Write(aux, reg, SLAVE_ADDR);
+        return 1;
+    }
+    else if (temp_max > 0 && temp_max < 128)
+    {
+        math_aux = fmod(temp_max, precision);  //if the value is positive writes the value in 2's complement
+        temp_max -= math_aux;
+        aux = temp_max / precision;
+        aux = aux << 4;
+        I2C_2byte_Write(aux, reg, SLAVE_ADDR);
+        return 1;
+    }
+ return -1;
+}
+
 
 //*****************************************************************************
 //
@@ -53,8 +130,24 @@ static void
 TMP_Task(void *pvParameters)
 {
 
-        //vTaskDelayUntil(&ui32WakeTime, ui32LEDToggleDelay / portTICK_RATE_MS);
+    portTickType xLastWakeTime;
 
+
+    set_temp(24, REG_TMAX);
+    set_temp(22, REG_TLOW);
+    float temp=0.0;
+
+
+    xLastWakeTime = xTaskGetTickCount();
+
+    while(1)
+    {
+
+        temp=temp_get();
+
+        vTaskDelayUntil(&xLastWakeTime, TMP_Delay/ portTICK_RATE_MS);
+
+    }
 }
 
 //*****************************************************************************
@@ -71,6 +164,8 @@ TMP_TaskInit(void)
 
     g_pLEDQueue = xQueueCreate(TMP_QUEUE_SIZE, TMP_ITEM_SIZE);
 
+
+    vSemaphoreCreateBinary( i2c_semaphore );
     //
     // Create the LED task.
     //
@@ -79,6 +174,9 @@ TMP_TaskInit(void)
     {
         return(1);
     }
+
+    I2C_Init();
+    config_i2c();
 
     //
     // Success.

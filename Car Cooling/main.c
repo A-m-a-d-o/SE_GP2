@@ -34,6 +34,7 @@
 #include "driverlib/gpio.h"
 #include "driverlib/pin_map.h"
 #include "i2c.h"
+#include "LCD.h"
 
 
 #define SLAVE_ADDR              0x48
@@ -59,8 +60,11 @@ int main(void)
     set_temp(22, REG_TLOW);
     float temp=0.0;
   */
+    SysCtlClockSet(SYSCTL_SYSDIV_8|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
+        LCD_init();
+        LCD_Cursor(19);
+        LCD_print("O");
 
-    keypad_init();
 
         while(1){
 

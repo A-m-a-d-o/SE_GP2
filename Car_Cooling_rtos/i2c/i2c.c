@@ -17,6 +17,11 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
 #include "driverlib/pin_map.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+
 #include <math.h>
 
 
@@ -27,13 +32,40 @@
 #define REG_TLOW                0x02
 #define REG_TMAX         0x03
 
+
+
 // I2C hardware functions
 /*
 PA6 -----> SCL
 PA7 -----> SDA
 */
 
+
+xSemaphoreHandle i2c_semaphore;
+
+void i2c_handler(void)
+{
+    I2CMasterIntClear(I2C1_BASE);
+    static portBASE_TYPE xHigherPriorityTaskWoken;
+     xHigherPriorityTaskWoken = pdFALSE;
+     /* 'Give' the semaphore to unblock the task. */
+     xSemaphoreGiveFromISR( i2c_semaphore, &xHigherPriorityTaskWoken );
+     if( xHigherPriorityTaskWoken == pdTRUE ) {
+     /* Giving the semaphore unblocked a task, and the priority of the unblocked task
+     is higher than the currently running task - force a context switch to ensure that
+     the interrupt returns directly to the unblocked (higher priority) task.
+     NOTE: The actual macro to use (context switch) from an ISR is dependent on the
+     port. This is the correct macro for the Open Watcom DOS port. Other ports may
+     require different syntax */
+     portEND_SWITCHING_ISR (xHigherPriorityTaskWoken);
+     }
+
+
+}
+
 // I2C Peripheral Initializations
+
+
 void I2C_Init(void){
 
     // I2C module 1 initializations
@@ -50,22 +82,13 @@ void I2C_Init(void){
     GPIOPinTypeI2CSCL(GPIO_PORTA_BASE, GPIO_PIN_6);
     GPIOPinTypeI2C(GPIO_PORTA_BASE, GPIO_PIN_7);
 
+    I2CIntRegister(I2C1_BASE, i2c_handler);
+
+
     I2CMasterInitExpClk(I2C1_BASE, SysCtlClockGet(), false);
 
 }
-// Config I2C for TMP 101
-void config_i2c(void){
 
-    I2CMasterSlaveAddrSet(I2C1_BASE, SLAVE_ADDR, false);
-
-    I2CMasterDataPut(I2C1_BASE, 0x01);                             //TMP Config Reg
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_START);
-    while(I2CMasterBusy(I2C1_BASE));
-
-    I2CMasterDataPut(I2C1_BASE, 0x6E);                             //TMP 9 bits Res., 2 Faults, continuous mode
-    I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_FINISH);
-    while(I2CMasterBusy(I2C1_BASE));
-}
 
 
 //Writes 2 Bytes on I2C bus
@@ -75,17 +98,18 @@ void I2C_2byte_Write(uint16_t data, uint8_t reg, uint8_t slave_addr)
 
     I2CMasterDataPut(I2C1_BASE, reg);
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_START);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
 
     I2CMasterDataPut(I2C1_BASE, (data >> 8));
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_CONT);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
 
     I2CMasterDataPut(I2C1_BASE, (data & 0x00FF));
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_SEND_FINISH);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
 
 }
+
 
 // Reads 2 Bytes from I2C bus
 uint16_t I2C_2byte_Read(uint8_t reg_addr, uint8_t slave_addr)
@@ -96,72 +120,20 @@ uint16_t I2C_2byte_Read(uint8_t reg_addr, uint8_t slave_addr)
 
     I2CMasterDataPut(I2C1_BASE, reg_addr);
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_SINGLE_SEND);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
 
     I2CMasterSlaveAddrSet(I2C1_BASE, slave_addr, true); // Sets I2C for a read transaction
 
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_RECEIVE_START);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
     data = I2CMasterDataGet(I2C1_BASE) << 8;
 
 
     I2CMasterControl(I2C1_BASE, I2C_MASTER_CMD_BURST_RECEIVE_FINISH);
-    while(I2CMasterBusy(I2C1_BASE));
+    xSemaphoreTake( i2c_semaphore, portMAX_DELAY );
     data |= I2CMasterDataGet(I2C1_BASE);
 
     return data;
 }
 
-//Reads temperature from TMP 101 Sensor
-float temp_get (void){
-    uint16_t aux;
-
-    aux= I2C_2byte_Read(REG_TEMP_ADDR, SLAVE_ADDR);                // Gets 2 raw bytes from temperature register.
-
-    //Determine if reading is negative
-    if((aux && 0x8000) == 0x8000)
-    {
-        aux &= 0x7FFF;
-
-        aux = aux >> 6;
-
-            return -(aux * 0.25);
-
-    }
-    // Working with 10 bits
-    aux = aux >> 6;
-
-
-    return aux * 0.25; // Converts number to degrees celsius
-}
-// Sets alarm temperature threshold
-uint8_t set_temp(float temp_max, uint8_t reg)
-{
-    const float precision = 0.0625;
-    float math_aux;
-    uint16_t aux;
-
-// Determines if alarm number is negative
-    if (temp_max < 0 && temp_max > -128 )
-    {
-        temp_max = fabs(temp_max);              //if its negative writes value in 2's complement
-        math_aux = fmod(temp_max, precision);
-        temp_max -= math_aux;
-        aux = temp_max / precision;
-        aux = (~aux) +1;
-        aux = aux << 4;
-        I2C_2byte_Write(aux, reg, SLAVE_ADDR);
-        return 1;
-    }
-    else if (temp_max > 0 && temp_max < 128)
-    {
-        math_aux = fmod(temp_max, precision);  //if the value is positive writes the value in 2's complement
-        temp_max -= math_aux;
-        aux = temp_max / precision;
-        aux = aux << 4;
-        I2C_2byte_Write(aux, reg, SLAVE_ADDR);
-        return 1;
-    }
- return -1;
-}
 

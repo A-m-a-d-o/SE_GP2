@@ -33,6 +33,7 @@
 #include "driverlib/uart.h"
 #include "utils/uartstdio.h"
 #include "TMP_task.h"
+#include "LCD_task.h"
 #include "switch_task.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -105,7 +106,7 @@ main(void)
     //
     // Create the LED task.
     //
-    if(TMP_TaskInit() != 0)
+    if(LCD_TaskInit() != 0)
     {
 
         while(1)
