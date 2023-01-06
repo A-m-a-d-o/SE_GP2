@@ -34,12 +34,12 @@
 #include "utils/uartstdio.h"
 #include "TMP_task.h"
 #include "LCD_task.h"
-#include "switch_task.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
-
+#include "global_types.h"
 
 
 //*****************************************************************************
@@ -48,6 +48,8 @@
 //
 //*****************************************************************************
 xSemaphoreHandle g_pUARTSemaphore;
+
+
 
 //*****************************************************************************
 //
@@ -103,29 +105,30 @@ main(void)
     //
     g_pUARTSemaphore = xSemaphoreCreateMutex();
 
+    LCD_write_queue = xQueueCreate( 5, sizeof( lcd_msg ));
+
     //
     // Create the LED task.
     //
     if(LCD_TaskInit() != 0)
     {
-
         while(1)
         {
+
         }
     }
 
-    /*
+
     //
     // Create the switch task.
     //
-    if(SwitchTaskInit() != 0)
+    if(TMP_TaskInit() != 0)
     {
 
         while(1)
         {
         }
     }
-*/
     //
     // Start the scheduler.  This should not return.
     //

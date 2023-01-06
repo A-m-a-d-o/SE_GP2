@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <TMP_task.h>
 #include <math.h>
 #include "inc/hw_memmap.h"
@@ -18,6 +19,8 @@
 #include "semphr.h"
 #include "LCD/LCD.h"
 #include "LCD_task.h"
+#include "global_types.h"
+#include "string_handler/string_handler.h"
 
 
 
@@ -26,7 +29,7 @@
 // The stack size for the LED toggle task.
 //
 //*****************************************************************************
-#define LCDTASKSTACKSIZE        128         // Stack size in words
+#define LCDTASKSTACKSIZE                // Stack size in words
 
 //*****************************************************************************
 //
@@ -57,26 +60,47 @@ portTickType xLastWakeTime_LCD;
 // can make the selections by pressing the left and right buttons.
 //
 //*****************************************************************************
+
 static void
 LCD_Task(void *pvParameters)
 {
+    lcd_msg data_in;
+
+    char temp[5];
 
 
     xLastWakeTime_LCD = xTaskGetTickCount();
-    LCD_Command(0x0F); //Turn on Lcd
+    LCD_Command(0x0C); //Turn on Lcd
     LCD_Clear(); //Clear screen
+    LCD_Cursor(5);
+    LCD_Write_c(0xDF);
+    LCD_Write_c('C');
 
 
-    LCD_Cursor(2);
-    LCD_print("Ola tudo ben");
+
+
+
+
 
     while(1)
     {
 
+        if (xQueueReceive (LCD_write_queue, &data_in, portMAX_DELAY) != pdPASS)
+        {
+            while(1);
+        }
+
+        float_to_string(temp, data_in.data);
+
+        LCD_Cursor(0);
+        if (temp[0] == '0')
+            LCD_print(&temp[1]);
+        else
+            LCD_print(temp);
 
 
 
-
+       vTaskDelayUntil(&xLastWakeTime_LCD, 200/ portTICK_RATE_MS);
     }
 }
 

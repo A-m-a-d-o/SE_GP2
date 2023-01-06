@@ -1,5 +1,22 @@
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "inc/hw_i2c.h"
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "inc/hw_gpio.h"
+#include "driverlib/i2c.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/systick.h"
+#include "keypad.h"
 
-int keyboard[4][4] = {
+const uint8_t pin[6] = {GPIO_PIN_0,GPIO_PIN_1, GPIO_PIN_2,GPIO_PIN_3,GPIO_PIN_4, GPIO_PIN_5};
+volatile char key = 0;
+const char keyboard[4][4] = {
     {'1', '2', '3', 'F'},
     {'4', '5', '6', 'E'},
     {'7', '8', '9', 'D'},
@@ -7,6 +24,7 @@ int keyboard[4][4] = {
 };
 
 volatile uint8_t key_flag = 0;
+volatile uint8_t up=0;
 uint32_t time = 0;
 
 char key_pressed(uint8_t col, uint8_t row)
@@ -35,7 +53,7 @@ void keypad_init(void)
     GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
 
     GPIOIntTypeSet(GPIO_PORTE_BASE,
-    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_HIGH_LEVEL);
+    GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_BOTH_EDGES);
 
     GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE,
     GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
@@ -56,7 +74,7 @@ void keypad_init(void)
 char detect_key(void)
 {
     uint8_t cols;
-    char key = 0;
+    char key_ = 0;
 
     GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, 0);
 
@@ -72,7 +90,7 @@ char detect_key(void)
 
         if (reading != 0)                                      // if a key is detected
         {
-            key = key_pressed(cols, reading);
+            key_ = key_pressed(cols, reading);
             return key;
         }
 
@@ -85,7 +103,7 @@ char detect_key(void)
 
 void PortEIntHandler(void)
 {
-
+   GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
    GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
    key_flag = 1;
 }
@@ -97,23 +115,50 @@ void int_tick_ms_handler(void)
 
 void keypad_processing(void)
 {
-    if (key_flag == 1)
+
+    if (key_flag == 1 && up == 0)
         {
-            char key;
             key_flag = 0;
-            key = detect_key();
-            // does lcd processing
             SysTickEnable();
+            return;
+        }
+
+    else if (key_flag == 1 && up == 1)
+        {
+            key_flag = 0;
+            SysTickEnable();
+            return;
 
         }
 
-        if(time >= 5)
+    if(time >= 10 && up == 0)
         {
             SysTickDisable();
             time = 0;
-            GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+            key = detect_key();
+            up = 1;
             GPIOPinWrite(GPIO_PORTD_BASE,
-            GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+                         GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+
+            GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+            return;
         }
+
+    else if(time >= 10 && up == 1)
+        {
+            SysTickDisable();
+            time = 0;
+
+            if (GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3) != 0 )
+            {
+                GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+                return;
+            }
+
+            GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_0| GPIO_PIN_1 | GPIO_PIN_2 |GPIO_PIN_3);
+            up = 0;
+            return;
+        }
+
 
 }

@@ -18,6 +18,7 @@
 #include "semphr.h"
 #include "i2c/i2c.h"
 #include "TMP_task.h"
+#include "global_types.h"
 
 //*****************************************************************************
 //
@@ -131,11 +132,13 @@ TMP_Task(void *pvParameters)
 {
 
     portTickType xLastWakeTime;
-
+    float temp=0.0;
+    lcd_msg data_out;
+    data_out.order_id = TEMP_READING;
 
     set_temp(24, REG_TMAX);
     set_temp(22, REG_TLOW);
-    float temp=0.0;
+
 
 
     xLastWakeTime = xTaskGetTickCount();
@@ -144,6 +147,13 @@ TMP_Task(void *pvParameters)
     {
 
         temp=temp_get();
+
+        data_out.data = temp;
+
+        if (xQueueSendToBack (LCD_write_queue, &data_out , portMAX_DELAY) != pdPASS )
+        {
+            while(1);
+        }
 
         vTaskDelayUntil(&xLastWakeTime, TMP_Delay/ portTICK_RATE_MS);
 
