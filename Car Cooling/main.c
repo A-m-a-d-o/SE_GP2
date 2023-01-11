@@ -35,26 +35,62 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
 #include "driverlib/pin_map.h"
+#include "driverlib/pwm.h"
+#include "driverlib/hibernate.h"
 #include "i2c.h"
+#include "pwm.h"
 #include "keypad.h"
 #include "math.h"
 
-// I2C hardware functions
-/*
-PA6 -----> SCL
-PA7 -----> SDA
-*/
+void seconds_to_string( uint32_t * in, char * time)
+{
+
+    uint32_t hours, minutes, seconds;
+
+    hours =(uint32_t) in/3600;
+
+    minutes = (uint32_t) (in/600)%60;
+
+    seconds = (uint32_t) in%60;
+
+    time[0] = (hours / 10) + '0';
+
+    time[1] = (hours % 10) + '0';
+
+    time[2] = (minutes / 10) + '0';
+
+    time[3] = (minutes % 10) + '0';
+
+    time[4] = (seconds / 10) + '0';
+
+    time[5] = (seconds % 10);
+
+}
+
 
 
 
 
 int main(void)
 {
-   keypad_init();
- while(1)
- {
-     keypad_processing();
- }
+    SysCtlClockSet(SYSCTL_SYSDIV_4|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
+
+    uint32_t hours, minutes, seconds;
+    //uint32_t  in = 58851; //16:20:51
+
+    char  in[7] =  {'1','6','2','0','5','1'};
+
+    uint32_t time;
+
+       time = ((in[0] - '0')*10 + (in[1] - '0'))*3600;
+
+       time += ((in[2] - '0')*10 + (in[3] - '0'))*60;
+
+       time += ((in[4] - '0')*10 + (in[5] - '0'));
+
+
+
+
  return 0;
 
 }

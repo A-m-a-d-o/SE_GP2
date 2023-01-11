@@ -22,14 +22,14 @@
 
 //*****************************************************************************
 //
-// The stack size for the LED toggle task.
+// The stack size for the TMP toggle task.
 //
 //*****************************************************************************
 #define TMPTASKSTACKSIZE        128         // Stack size in words
 
 //*****************************************************************************
 //
-// The item size and queue size for the LED message queue.
+// The item size and queue size for the TMP message queue.
 //
 //*****************************************************************************
 #define TMP_ITEM_SIZE           sizeof(uint8_t)
@@ -37,15 +37,7 @@
 #define TMP_Delay               100
 
 
-//*****************************************************************************
-//
-// The queue that holds messages sent to the LED task.
-//
-//*****************************************************************************
-xQueueHandle g_pLEDQueue;
 
-
-extern xSemaphoreHandle g_pUARTSemaphore;
 extern xSemaphoreHandle i2c_semaphore;
 
 // Config I2C for TMP 101
@@ -133,8 +125,10 @@ TMP_Task(void *pvParameters)
 
     portTickType xLastWakeTime;
     float temp=0.0;
+    pwm_msg motor_control;
     lcd_msg data_out;
     data_out.order_id = TEMP_READING;
+    motor_control.order_id = TEMP_READING;
 
     set_temp(24, REG_TMAX);
     set_temp(22, REG_TLOW);
@@ -146,16 +140,25 @@ TMP_Task(void *pvParameters)
     while(1)
     {
 
+        xSemaphoreTake (temp_mutex, portMAX_DELAY);
+        xSemaphoreGive (temp_mutex);
+
         temp=temp_get();
 
         data_out.data = temp;
+        motor_control.temp = temp;
 
-        if (xQueueSendToBack (LCD_write_queue, &data_out , portMAX_DELAY) != pdPASS )
+        xQueueSendToBack (LCD_write_queue, &data_out , 50/ portTICK_RATE_MS);
+
+
+        if (xQueueSendToBack (PWM_queue, &motor_control, portMAX_DELAY) != pdPASS )
         {
             while(1);
         }
 
         vTaskDelayUntil(&xLastWakeTime, TMP_Delay/ portTICK_RATE_MS);
+
+
 
     }
 }
@@ -168,12 +171,6 @@ TMP_Task(void *pvParameters)
 uint32_t
 TMP_TaskInit(void)
 {
-    //
-    // Initialize the GPIOs and Timers that drive the three LEDs.
-    //
-
-    g_pLEDQueue = xQueueCreate(TMP_QUEUE_SIZE, TMP_ITEM_SIZE);
-
 
     vSemaphoreCreateBinary( i2c_semaphore );
     //

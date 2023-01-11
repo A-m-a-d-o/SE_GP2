@@ -48,28 +48,28 @@ void LCD_Command(unsigned char c) {
         GPIOPinWrite(LCDCONTROL, RS, 0x00);
         GPIOPinWrite(LCDCONTROL, E, E);
 
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C/ portTICK_RATE_MS);
 
         GPIOPinWrite(LCDCONTROL, E, 0x00);
 
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C/ portTICK_RATE_MS);
 
         GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (c & 0x0f) << 4 );
         GPIOPinWrite(LCDCONTROL, RS, 0x00);
         GPIOPinWrite(LCDCONTROL, E, E);
 
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C_ON/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C_ON/ portTICK_RATE_MS);
 
         GPIOPinWrite(LCDCONTROL, E, 0x00);
 
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C/ portTICK_RATE_MS);
 
 }
 
 void LCD_Clear(void){
 
         LCD_Command(0x01);
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C_ON/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C_ON/ portTICK_RATE_MS);
 
 }
 
@@ -120,7 +120,7 @@ void LCD_init() {
 void LCD_Pulse()
 {
     GPIOPinWrite(LCDCONTROL , E, E);
-    vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C_ON/ portTICK_RATE_MS);
+    vTaskDelay( LCD_DELAY_C_ON/ portTICK_RATE_MS);
     GPIOPinWrite(LCDCONTROL, E, 0x00);
 }
 
@@ -131,11 +131,11 @@ void LCD_Write_c(unsigned char d) {
         GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0xf0) );
         GPIOPinWrite(LCDCONTROL , RS, RS);
         LCD_Pulse();
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C/ portTICK_RATE_MS);
         GPIOPinWrite(LCDPORT, D4 | D5 | D6 | D7, (d & 0x0f) << 4 );
         GPIOPinWrite(LCDCONTROL , RS, RS);
         LCD_Pulse();
-        vTaskDelayUntil(&xLastWakeTime_LCD, LCD_DELAY_C/ portTICK_RATE_MS);
+        vTaskDelay( LCD_DELAY_C/ portTICK_RATE_MS);
 
 }
 

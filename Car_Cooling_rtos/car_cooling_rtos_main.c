@@ -34,7 +34,10 @@
 #include "utils/uartstdio.h"
 #include "TMP_task.h"
 #include "LCD_task.h"
-
+#include "PWM_task.h"
+#include "keypad_task.h"
+#include "menu_task.h"
+#include "alert_task.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -47,7 +50,8 @@
 // The mutex that protects concurrent access of UART from multiple tasks.
 //
 //*****************************************************************************
-xSemaphoreHandle g_pUARTSemaphore;
+
+
 
 
 
@@ -103,13 +107,22 @@ main(void)
     //
     // Create a mutex to guard the UART.
     //
-    g_pUARTSemaphore = xSemaphoreCreateMutex();
+    temp_mutex = xSemaphoreCreateMutex();
 
     LCD_write_queue = xQueueCreate( 5, sizeof( lcd_msg ));
+
+    Menu_queue = xQueueCreate( 1, sizeof( char ));
+
+    Alert_queue = xQueueCreate( 5, sizeof( uint8_t));
+
+    PWM_queue = xQueueCreate( 5, sizeof( pwm_msg ));
+
+    Menu_lcd_queue = xQueueCreate( 1,  sizeof( lcd_msg ));
 
     //
     // Create the LED task.
     //
+
     if(LCD_TaskInit() != 0)
     {
         while(1)
@@ -117,6 +130,25 @@ main(void)
 
         }
     }
+
+
+    if(Keypad_TaskInit() != 0)
+    {
+
+        while(1)
+        {
+
+        }
+    }
+
+    if(Menu_TaskInit() != 0)
+       {
+
+           while(1)
+           {
+
+           }
+       }
 
 
     //
@@ -129,6 +161,29 @@ main(void)
         {
         }
     }
+
+
+    if(PWM_TaskInit() != 0)
+              {
+
+                  while(1)
+                  {
+
+                  }
+              }
+
+    if(Alert_TaskInit() != 0)
+              {
+
+                  while(1)
+                  {
+
+                  }
+              }
+
+
+
+
     //
     // Start the scheduler.  This should not return.
     //
