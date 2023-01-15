@@ -85,11 +85,11 @@ void int_to_char(int * in, char * date)
 void char_to_float(float * temp, char * in)
 {
 
-    * temp = in[0]*100;
-    * temp += in[1]*10;
-    * temp += in[2];
-    * temp += in[3]/10;
-    * temp += in[4]/100;
+    * temp = (in[0] - '0')*100 ;
+    * temp += (in[1] - '0')*10 ;
+    * temp += in[2] - '0';
+    * temp += (in[3] - '0')/10 ;
+    * temp += (in[4] - '0')/100;
 
 
 }

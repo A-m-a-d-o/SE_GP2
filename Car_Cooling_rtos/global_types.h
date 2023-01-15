@@ -17,6 +17,7 @@
 #define MAX_THR_MODE 6
 #define DATE_TIME_SCREEN 7
 #define STOP_ALARM 8
+#define START 9
 
 
 
@@ -32,7 +33,7 @@ typedef struct lcd_msg_
     uint8_t order_id;
     float data;
     char ch;
-    char pt_time[9], pt_date[11];
+    char pt_time[9], pt_date[11], pt_pwm[7];
 
 }lcd_msg;
 

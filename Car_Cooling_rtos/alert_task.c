@@ -51,17 +51,22 @@ Alert_Task(void *pvParameters)
         {
             while(1)
             {
+
+            if (alarm_order == STOP_ALARM)
+            {
+               PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , false);
+               break;
+            }
+
             PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , true);
-            vTaskDelayUntil(&xLastWakeTime, 500 / portTICK_RATE_MS);
+            vTaskDelayUntil(&xLastWakeTime, 300 / portTICK_RATE_MS);
             PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , false);
 
-           xQueueReceive (Alert_queue, &alarm_order, 10);
-
-           if(alarm_order== STOP_ALARM || alarm_order == MAX_THR_MODE)
-               break;
 
 
-           vTaskDelayUntil(&xLastWakeTime, 1000 / portTICK_RATE_MS);
+           vTaskDelayUntil(&xLastWakeTime, 500 / portTICK_RATE_MS);
+
+           xQueueReceive (Alert_queue, &alarm_order, 0);
             }
 
         }
@@ -69,19 +74,25 @@ Alert_Task(void *pvParameters)
         {
             while(1)
             {
+
+
+             if (alarm_order == STOP_ALARM)
+             {
+                PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , false);
+                break;
+             }
             PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , true);
             vTaskDelayUntil(&xLastWakeTime, 1000 / portTICK_RATE_MS);
             PWMOutputState(PWM0_BASE, PWM_OUT_3_BIT , false);
 
-            xQueueReceive (Alert_queue, &alarm_order, 10);
-
-           if(alarm_order== STOP_ALARM || alarm_order == MIN_THR_MODE)
-               break;
-
-
            vTaskDelayUntil(&xLastWakeTime, 1000 / portTICK_RATE_MS);
+
+           xQueueReceive (Alert_queue, &alarm_order, 0);
             }
          }
+
+
+
 
     }
 }

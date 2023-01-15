@@ -60,7 +60,7 @@ void PWM_Init(void){
    //
    // Enable the outputs.
    //
-   PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT , true);
+   PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT , false);
 
 }
 

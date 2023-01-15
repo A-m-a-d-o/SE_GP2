@@ -151,10 +151,8 @@ TMP_Task(void *pvParameters)
         xQueueSendToBack (LCD_write_queue, &data_out , 50/ portTICK_RATE_MS);
 
 
-        if (xQueueSendToBack (PWM_queue, &motor_control, portMAX_DELAY) != pdPASS )
-        {
-            while(1);
-        }
+       xQueueSendToBack (PWM_queue, &motor_control, 50/ portTICK_RATE_MS);
+
 
         vTaskDelayUntil(&xLastWakeTime, TMP_Delay/ portTICK_RATE_MS);
 

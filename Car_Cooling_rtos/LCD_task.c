@@ -74,7 +74,7 @@ LCD_Task(void *pvParameters)
     LCD_Command(0x0C); //Turn on Lcd
     LCD_Clear(); //Clear screen
     LCD_Cursor(0);
-    LCD_print("Press A");
+    LCD_print("Press A-Wait for fan");
 
 
 
@@ -95,6 +95,29 @@ LCD_Task(void *pvParameters)
             while(1);
         }
 
+        if(data_in.order_id == SPEED_READING)
+        {
+            xQueueReset( LCD_write_queue );
+
+            if (xQueueReceive (Menu_lcd_queue, &data_in, portMAX_DELAY) != pdPASS)
+                   {
+                       while(1);
+                   }
+
+            LCD_Command(0x0C); //Turn on Lcd
+            LCD_Clear();
+            LCD_Cursor(0);
+            LCD_print(data_in.pt_pwm);
+            LCD_Write_c('%');
+            vTaskDelay(500/ portTICK_RATE_MS);
+            LCD_Clear();
+            LCD_Cursor(5);
+            LCD_Write_c(0xDF);
+            LCD_Write_c('C');
+
+
+        }
+
         if(data_in.order_id == DATE_MODE)
         {
 
@@ -111,6 +134,7 @@ LCD_Task(void *pvParameters)
                           LCD_Cursor(i+1);
                           i++;
                     }
+
 
 
                 if (xQueueReceive (Menu_lcd_queue, &data_in, portMAX_DELAY) != pdPASS)
@@ -166,6 +190,8 @@ LCD_Task(void *pvParameters)
 
        if(data_in.order_id == TEMP_READING)
        {
+
+
         float_to_string(temp, data_in.data);
 
 

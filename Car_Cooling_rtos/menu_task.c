@@ -67,7 +67,29 @@ Menu_Task(void *pvParameters)
 
     case 'A':
 
+        data_pwm.order_id = START;
+
+        if (xQueueSendToBack (PWM_queue, &data_pwm, portMAX_DELAY) != pdPASS )
+           {
+               while(1);
+           }
+
+        vTaskDelay(1000/ portTICK_RATE_MS);
+        LCD_Clear();
+
         xSemaphoreGive (temp_mutex);    //ligar temp
+
+
+        break;
+
+    case 'B':
+
+        data_pwm.order_id = SPEED_READING;
+
+        if (xQueueSendToBack (PWM_queue, &data_pwm, portMAX_DELAY) != pdPASS )
+       {
+           while(1);
+       }
 
 
         break;

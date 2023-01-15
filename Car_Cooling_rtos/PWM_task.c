@@ -56,21 +56,33 @@ PWM_Task(void *pvParameters)
 {
 
     long Start = xTaskGetTickCount(),prev_buzzer_on,prev_buzzer_off;
-    float  temp_min = 22, temp_max = 27, perc = 0;
+    float  temp_min = 10, temp_max = 27, perc = 0;
 
     pwm_msg temp;
+    lcd_msg data_pwm;
 
     int alarm = 20;
 
+
     while(1)
     {
+
 
         if (xQueueReceive (PWM_queue, &temp, portMAX_DELAY) != pdPASS)
                 {
                     while(1);
                 }
+        if(temp.order_id == START )
+        {
+
+           PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT , true);
+
+        }
+
+
         if(temp.order_id == TEMP_READING)
         {
+
 
             if(temp.temp <= 10)
             {
@@ -84,25 +96,15 @@ PWM_Task(void *pvParameters)
                     perc = 100;
             }
 
-            if(temp.temp < temp_min)
+            if(temp.temp <= temp_min && alarm != MIN_THR_MODE)
             {
                 alarm = MIN_THR_MODE;
 
                 xQueueSendToBack (Alert_queue, &alarm,portMAX_DELAY);
 
             }
-            else if(alarm == MIN_THR_MODE || alarm == MIN_THR_MODE)
-            {
 
-                alarm = STOP_ALARM;
-
-                xQueueSendToBack (Alert_queue, &alarm,portMAX_DELAY);
-
-                alarm = 20;
-
-            }
-
-            if(temp.temp > temp_max)
+            if(temp.temp >= temp_max && alarm != MAX_THR_MODE)
             {
 
                 alarm = MAX_THR_MODE;
@@ -110,7 +112,7 @@ PWM_Task(void *pvParameters)
                 xQueueSendToBack (Alert_queue, &alarm,portMAX_DELAY);
 
             }
-            else
+            if((temp.temp < temp_max && temp.temp > temp_min) && (alarm == MAX_THR_MODE || alarm == MIN_THR_MODE ) )
             {
 
                 alarm = STOP_ALARM;
@@ -119,13 +121,34 @@ PWM_Task(void *pvParameters)
 
                 alarm = 20;
 
-
             }
 
             PWM_Fan_Control(perc);
 
         }
-        /*
+        if(temp.order_id == SPEED_READING)
+        {
+
+            data_pwm.order_id = SPEED_READING;
+
+
+            if (xQueueSendToFront (LCD_write_queue, &data_pwm, portMAX_DELAY)!= pdPASS)
+            {
+                while(1);
+            }
+
+            float_to_string(data_pwm.pt_pwm,perc);
+
+            if (xQueueSendToFront (Menu_lcd_queue, &data_pwm, portMAX_DELAY)!= pdPASS)
+            {
+               while(1);
+            }
+
+        }
+
+
+
+
         if(temp.order_id == MIN_THR_MODE)
         {
 
@@ -139,7 +162,7 @@ PWM_Task(void *pvParameters)
            temp_max = temp.temp;
 
         }
-        */
+
 
     }
 
